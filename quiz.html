@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz: Slope of a Line</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .quiz-container { max-width: 500px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        .question { margin-bottom: 20px; }
+        .options label { display: block; margin-bottom: 8px; }
+        #feedback { margin-top: 20px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <h2>Quiz: Slopes and Lines</h2>
+        <div id="score" style="font-size:1.5em; color:#0074D9; font-weight:bold; margin-bottom:20px; text-align:center;">Score: 0</div>
+        <form id="quiz-form">
+            <div id="questions"></div>
+            <button id="submit-btn" type="submit" disabled style="margin-top:30px; font-size:1.2em;">Submit All Answers</button>
+        </form>
+        <div id="feedback" style="margin-top:30px;"></div>
+    </div>
+    <script>
+        // Utility functions
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Question 1: Is the point on the line?
+        const q1_m = randomInt(-5, 5) || 2; // avoid zero slope
+        const q1_b = randomInt(-10, 10);
+        const q1_x = randomInt(-5, 5);
+        const q1_y = randomInt(-20, 20);
+        const q1_eq = `y = ${q1_m}x + ${q1_b}`;
+        const q1_onLine = (q1_y === q1_m * q1_x + q1_b);
+
+        // Question 2: What is the slope type?
+        const slopeTypes = ['positive', 'negative', 'zero', 'undefined'];
+        let q2_type, q2_m, q2_b;
+        const q2_rand = randomInt(0, 3);
+        if (q2_rand === 0) { q2_type = 'positive'; q2_m = randomInt(1, 5); q2_b = randomInt(-10, 10); }
+        else if (q2_rand === 1) { q2_type = 'negative'; q2_m = -randomInt(1, 5); q2_b = randomInt(-10, 10); }
+        else if (q2_rand === 2) { q2_type = 'zero'; q2_m = 0; q2_b = randomInt(-10, 10); }
+        else { q2_type = 'undefined'; }
+
+        // Question 3: Slope from two points
+        let q3_x1 = randomInt(-5, 5), q3_y1 = randomInt(-10, 10);
+        let q3_x2 = randomInt(-5, 5), q3_y2 = randomInt(-10, 10);
+        while (q3_x1 === q3_x2) { q3_x2 = randomInt(-5, 5); } // avoid vertical
+        const q3_slope = (q3_y2 - q3_y1) / (q3_x2 - q3_x1);
+        const q3_slope_str = q3_slope.toFixed(2);
+        let q3_options = [q3_slope_str];
+        while (q3_options.length < 4) {
+            let fake = (randomInt(-10, 10) / randomInt(1, 5)).toFixed(2);
+            if (!q3_options.includes(fake)) q3_options.push(fake);
+        }
+        shuffle(q3_options);
+
+        // Question 4: Solve for x or y
+        const q4_m = randomInt(-5, 5) || 2;
+        const q4_b = randomInt(-10, 10);
+        const q4_eq = `y = ${q4_m}x + ${q4_b}`;
+        const q4_knownIsX = Math.random() < 0.5;
+        let q4_x, q4_y;
+        if (q4_knownIsX) {
+            q4_x = randomInt(-5, 5);
+            q4_y = q4_m * q4_x + q4_b;
+        } else {
+            q4_y = randomInt(-20, 20);
+            q4_x = Math.round((q4_y - q4_b) / q4_m);
+        }
+
+        // Question 5: Give a point on the line
+        const q5_m = randomInt(-5, 5) || 2;
+        const q5_b = randomInt(-10, 10);
+        const q5_eq = `y = ${q5_m}x + ${q5_b}`;
+
+        // Render questions
+        const questionsDiv = document.getElementById('questions');
+        questionsDiv.innerHTML = `
+            <div class="question">
+                <div id="plot-q1" style="height:200px;"></div>
+                <div style="margin-bottom:8px;">Equation: <b>${q1_eq}</b></div>
+                <div style="margin-bottom:8px;">Point: <b>(${q1_x}, ${q1_y})</b></div>
+                <label>Is this point on the graph?</label><br>
+                <label><input type="radio" name="q1" value="yes"> Yes</label>
+                <label><input type="radio" name="q1" value="no"> No</label>
+            </div>
+            <hr>
+            <div class="question">
+                <div id="plot-q2" style="height:200px;"></div>
+                <div style="margin-bottom:8px;">${q2_type === 'undefined' ? 'Vertical line x = ' + randomInt(-5,5) : 'Equation: <b>y = ' + q2_m + 'x + ' + q2_b + '</b>'}</div>
+                <label>What is the slope?</label><br>
+                ${slopeTypes.map(type => `<label><input type="radio" name="q2" value="${type}"> ${type.charAt(0).toUpperCase() + type.slice(1)}</label>`).join('')}
+            </div>
+            <hr>
+            <div class="question">
+                <div style="margin-bottom:8px;">Points: <b>(${q3_x1}, ${q3_y1})</b> and <b>(${q3_x2}, ${q3_y2})</b></div>
+                <label>What is the slope?</label><br>
+                ${q3_options.map((opt, i) => `<label><input type="radio" name="q3" value="${opt}"> ${String.fromCharCode(65+i)}) ${opt}</label>`).join('')}
+            </div>
+            <hr>
+            <div class="question">
+                <div style="margin-bottom:8px;">Equation: <b>${q4_eq}</b></div>
+                <div style="margin-bottom:8px;">Known value: <b>${q4_knownIsX ? 'x = ' + q4_x : 'y = ' + q4_y}</b></div>
+                <label>Calculate the other value (whole number):</label><br>
+                <input type="number" name="q4" step="1">
+            </div>
+            <hr>
+            <div class="question">
+                <div id="plot-q5" style="height:200px;"></div>
+                <div style="margin-bottom:8px;">Equation: <b>${q5_eq}</b></div>
+                <label>Give x and y of a point on this line (whole numbers):</label><br>
+                x: <input type="number" name="q5x" step="1"> &nbsp; y: <input type="number" name="q5y" step="1">
+            </div>
+        `;
+
+        // Plot graphs
+        Plotly.newPlot('plot-q1', [{
+            x: [-10, 10],
+            y: [-10 * q1_m + q1_b, 10 * q1_m + q1_b],
+            mode: 'lines',
+            line: {color: 'blue'},
+            name: q1_eq
+        }], {margin: {t: 20}, xaxis: {title: 'x'}, yaxis: {title: 'y'}});
+
+        if (q2_type === 'undefined') {
+            let xval = randomInt(-5,5);
+            Plotly.newPlot('plot-q2', [{
+                x: [xval, xval],
+                y: [-10, 10],
+                mode: 'lines',
+                line: {color: 'blue'},
+                name: 'x = ' + xval
+            }], {margin: {t: 20}, xaxis: {title: 'x'}, yaxis: {title: 'y'}});
+        } else {
+            Plotly.newPlot('plot-q2', [{
+                x: [-10, 10],
+                y: [-10 * q2_m + q2_b, 10 * q2_m + q2_b],
+                mode: 'lines',
+                line: {color: 'blue'},
+                name: `y = ${q2_m}x + ${q2_b}`
+            }], {margin: {t: 20}, xaxis: {title: 'x'}, yaxis: {title: 'y'}});
+        }
+
+        Plotly.newPlot('plot-q5', [{
+            x: [-10, 10],
+            y: [-10 * q5_m + q5_b, 10 * q5_m + q5_b],
+            mode: 'lines',
+            line: {color: 'blue'},
+            name: q5_eq
+        }], {margin: {t: 20}, xaxis: {title: 'x'}, yaxis: {title: 'y'}});
+
+        // Enable submit only when all answered
+        function checkAllAnswered() {
+            const q1 = document.querySelector('input[name="q1"]:checked');
+            const q2 = document.querySelector('input[name="q2"]:checked');
+            const q3 = document.querySelector('input[name="q3"]:checked');
+            const q4 = document.querySelector('input[name="q4"]');
+            const q5x = document.querySelector('input[name="q5x"]');
+            const q5y = document.querySelector('input[name="q5y"]');
+            let q4val = q4.value !== '';
+            let q5xval = q5x.value !== '';
+            let q5yval = q5y.value !== '';
+            document.getElementById('submit-btn').disabled = !(q1 && q2 && q3 && q4val && q5xval && q5yval);
+        }
+        document.getElementById('questions').addEventListener('input', checkAllAnswered);
+
+        // Score logic
+        let score = 0;
+        function updateScore() {
+            document.getElementById('score').textContent = 'Score: ' + score;
+        }
+
+        // Submit logic
+        document.getElementById('quiz-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            score = 0;
+            let feedback = '';
+            // Q1
+            const q1_ans = document.querySelector('input[name="q1"]:checked').value;
+            if ((q1_ans === 'yes') === q1_onLine) {
+                score++;
+                feedback += '<div>Q1: Correct!</div>';
+            } else {
+                feedback += `<div>Q1: Incorrect. The correct answer is ${q1_onLine ? 'Yes' : 'No'}.</div>`;
+            }
+            // Q2
+            const q2_ans = document.querySelector('input[name="q2"]:checked').value;
+            if (q2_ans === q2_type) {
+                score++;
+                feedback += '<div>Q2: Correct!</div>';
+            } else {
+                feedback += `<div>Q2: Incorrect. The correct answer is ${q2_type.charAt(0).toUpperCase() + q2_type.slice(1)}.</div>`;
+            }
+            // Q3
+            const q3_ans = document.querySelector('input[name="q3"]:checked').value;
+            if (q3_ans === q3_slope_str) {
+                score++;
+                feedback += '<div>Q3: Correct!</div>';
+            } else {
+                feedback += `<div>Q3: Incorrect. The correct answer is ${q3_slope_str}.</div>`;
+            }
+            // Q4
+            const q4_ans = document.querySelector('input[name="q4"]').value;
+            let q4_correct = q4_knownIsX ? q4_y : q4_x;
+            if (parseInt(q4_ans) === q4_correct) {
+                score++;
+                feedback += '<div>Q4: Correct!</div>';
+            } else {
+                feedback += `<div>Q4: Incorrect. The correct answer is ${q4_correct}.</div>`;
+            }
+            // Q5
+            const q5x_ans = parseInt(document.querySelector('input[name="q5x"]').value);
+            const q5y_ans = parseInt(document.querySelector('input[name="q5y"]').value);
+            if (q5y_ans === q5_m * q5x_ans + q5_b) {
+                score++;
+                feedback += '<div>Q5: Correct!</div>';
+            } else {
+                feedback += `<div>Q5: Incorrect. The correct answer is any (x, y) where y = ${q5_m}x + ${q5_b}.</div>`;
+            }
+            updateScore();
+            document.getElementById('feedback').innerHTML = feedback;
+        });
+    </script>
+</body>
+</html>
